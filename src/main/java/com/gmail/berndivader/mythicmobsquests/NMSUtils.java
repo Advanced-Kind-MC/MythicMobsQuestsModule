@@ -1,125 +1,72 @@
 package com.gmail.berndivader.mythicmobsquests;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-
+import io.lumine.xikage.mythicmobs.mobs.ActiveMob;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.world.item.ItemStack;
 import org.apache.commons.lang.StringUtils;
 import org.bukkit.Bukkit;
 
-import io.lumine.xikage.mythicmobs.mobs.ActiveMob;
+import java.lang.reflect.Field;
 
 public class NMSUtils {
-	
-    protected static String vp="";
-	
+
+    protected static String vp = "";
+
     protected static Class<?> class_CraftItemStack;
-    protected static Class<?> class_NBTTagCompound;
-    protected static Class<?> class_ItemStack;
-    
-    protected static Class<?> class_ActiveMob;
-    
-    protected static Field class_ItemStack_tagField;
-    protected static Field class_CraftItemStack_getHandleField;
-    
-    protected static Field class_ActiveMob_levelField;
-    
-    protected static Method class_NBTTagCompound_removeMethod;
-    protected static Method class_NBTTagCompound_setStringMethod;
-    protected static Method class_NBTTagCompound_getStringMethod;
-    
+
+    protected static Field class_CraftItemStack_handle;
+
     static {
-    	String cn=Bukkit.getServer().getClass().getName();
-    	String[]pkgs=StringUtils.split(cn,'.');
-    	if (pkgs.length==5) vp=pkgs[3]+".";
-    	try {
-    		class_ItemStack=fixBukkitClass("net.minecraft.server.ItemStack");
-            class_CraftItemStack=fixBukkitClass("org.bukkit.craftbukkit.inventory.CraftItemStack");
-            class_NBTTagCompound=fixBukkitClass("net.minecraft.server.NBTTagCompound");
-            class_ActiveMob=NMSUtils.class.getClassLoader().loadClass("io.lumine.xikage.mythicmobs.mobs.ActiveMob");
-            
-    		class_CraftItemStack_getHandleField=class_CraftItemStack.getDeclaredField("handle");
-    		class_CraftItemStack_getHandleField.setAccessible(true);
-    		class_ItemStack_tagField = class_ItemStack.getDeclaredField("tag");
-    		class_ItemStack_tagField.setAccessible(true);
-    		
-    		class_ActiveMob_levelField=class_ActiveMob.getDeclaredField("level");
-    		class_ActiveMob_levelField.setAccessible(true);
-    		
-    		class_NBTTagCompound_setStringMethod=class_NBTTagCompound.getMethod("setString",String.class,String.class);
-            class_NBTTagCompound_getStringMethod = class_NBTTagCompound.getMethod("getString", String.class);
-    		class_NBTTagCompound_removeMethod=class_NBTTagCompound.getMethod("remove",String.class);
-    	} catch (NoSuchMethodException|ClassNotFoundException|NoSuchFieldException|SecurityException e) {
-			e.printStackTrace();
-		}
+        String cn = Bukkit.getServer().getClass().getName();
+        String[] pkgs = StringUtils.split(cn, '.');
+        if (pkgs.length == 5) vp = pkgs[3] + ".";
+        try {
+            class_CraftItemStack = fixBukkitClass("org.bukkit.craftbukkit.inventory.CraftItemStack");
+            class_CraftItemStack_handle = class_CraftItemStack.getField("handle");
+        } catch (ClassNotFoundException | SecurityException | NoSuchFieldException e) {
+            e.printStackTrace();
+        }
     }
-    
+
     public static Class<?> fixBukkitClass(String s1) throws ClassNotFoundException {
         if (!vp.isEmpty()) {
-            s1=s1.replace("org.bukkit.craftbukkit.", "org.bukkit.craftbukkit."+vp);
-            s1=s1.replace("net.minecraft.server.", "net.minecraft.server."+vp);
+            s1 = s1.replace("org.bukkit.craftbukkit.", "org.bukkit.craftbukkit." + vp);
         }
-		return Class.forName(s1);
+        return Class.forName(s1);
     }
-    
-    private static Object getHandle(org.bukkit.inventory.ItemStack is) {
-    	Object o1;
-    	try {
-    		o1=class_CraftItemStack_getHandleField.get(is);
-    	} catch (Throwable ex) {
-    		o1=null;
-    	}
-    	return o1;
-    }
-    
-    private static Object getTag(Object o1) {
-    	Object o2;
-    	try {
-    		o2=class_ItemStack_tagField.get(o1);
-            if (o2==null) {
-                class_ItemStack_tagField.set(o1,class_NBTTagCompound.newInstance());
-            }
-        } catch (Throwable ex) {
-        	o2=null;
-    	}
-    	return o2;
-    }    
 
-    public static void setMeta(org.bukkit.inventory.ItemStack is,String s1,String s2) {
-    	Object o1=getTag(getHandle(is));
-    	if (o1==null) return;
-    	try {
-    		if (s2==null||s2.length()==0) {
-    			class_NBTTagCompound_removeMethod.invoke(o1);
-    		} else {
-    			class_NBTTagCompound_setStringMethod.invoke(o1,s1,s2);
-    		}
-    	} catch (Throwable ex) {
-    		ex.printStackTrace();
-    	}
+    private static ItemStack getNMSItemStack(org.bukkit.inventory.ItemStack is) {
+        try {
+            return (ItemStack) class_CraftItemStack_handle.get(is);
+        } catch (Throwable ex) {
+            return null;
+        }
     }
-    
-    public static String getMeta(org.bukkit.inventory.ItemStack is,String s1) {
-    	Object o1=getTag(getHandle(is));
-    	if (o1==null||!class_NBTTagCompound.isInstance(o1)) return null;
-    	String s2=new String();
-    	try {
-    		s2=(String)class_NBTTagCompound_getStringMethod.invoke(o1,s1);
-    	} catch (Throwable ex) {
-    		ex.printStackTrace();
-    	}
-    	return s2;
+
+    private static NBTTagCompound getNBTTagCompound(ItemStack nmsItemStack) {
+        if (nmsItemStack == null) return null;
+        return nmsItemStack.u();
     }
-    
+
+    public static void setMeta(org.bukkit.inventory.ItemStack itemStack, String key, String value) {
+        NBTTagCompound nbtTagCompound = getNBTTagCompound(getNMSItemStack(itemStack));
+        if (nbtTagCompound == null) return;
+
+        if (value == null || value.length() == 0) {
+            nbtTagCompound.r(value);
+        } else {
+            nbtTagCompound.a(key, value);
+        }
+    }
+
+    public static String getMeta(org.bukkit.inventory.ItemStack itemStack, String key) {
+        NBTTagCompound nbtTagCompound = getNBTTagCompound(getNMSItemStack(itemStack));
+        if (nbtTagCompound == null) return null;
+        return nbtTagCompound.l(key);
+    }
+
     public static int getActiveMobLevel(ActiveMob am) {
-    	Object level;
-    	try {
-			level=class_ActiveMob_levelField.get(am);
-		} catch (IllegalArgumentException | IllegalAccessException e) {
-			e.printStackTrace();
-			level=0;
-			Bukkit.getLogger().warning("Error getting Level for Mob. Set to 0");
-		}
-		return (int)((double)level);
+        return (int) am.getLevel();
     }
 
 }
