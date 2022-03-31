@@ -1,96 +1,46 @@
 apply plugin: 'java'
-apply plugin: 'maven'
+
+version = property("artver")
+group = "com.gmail.berndivader"
 
 repositories {
-    jcenter()
+//    jcenter()
     mavenCentral()
-    maven {
-        url "http://mc.hackerzlair.org:8888/repository/public"
-    }    
+//    maven {
+//        url "http://mc.hackerzlair.org:8888/repository/public"
+//    }
+    maven { url "https://hub.spigotmc.org/nexus/content/repositories/snapshots/" }
+    // citizens
+    maven { url "https://repo.citizensnpcs.co/" }
+    // quests
+    maven { url "https://jitpack.io" }
+    // Mythic mobs
+    maven { url "https://mvn.lumine.io/repository/maven-public/" }
 }
 
 dependencies {
-    compileOnly "org.spigotmc:spigot-1.16.5:+"
-    compileOnly "io.lumine.xikage:mythicmobs:+"
-    compileOnly "me.blackvein:quests:+"
-    compileOnly "net.citizensnpcs:citizens:+"
+    compileOnly "org.spigotmc:spigot-api:1.18.1-R0.1-SNAPSHOT"
+    compileOnly "com.github.PikaMug:Quests:4.2.2"
+    compileOnly "net.citizensnpcs:citizens:2.0.29-SNAPSHOT"
+    compileOnly "io.lumine.xikage:MythicMobs:4.12.0"
+    compileOnly fileTree("dependencies")
 }
 
+
 processResources {
-    
-    print("Process properties....")
-    Properties p1=new Properties()
-    File pf1=new File("$project.projectDir/gradle.properties")
-    if(pf1.exists())
-    {
-        p1.load(pf1.newDataInputStream())
-        project.version = p1.artver
-        project.group = p1.group
-        println("Done!")
-    }
-    else
-    {
-        println("Warning! gradle.properties file is missing!")
-    }
-    
     print("Process resources....")
     inputs.property "version", project.version
-    from (sourceSets.main.resources.srcDirs) {
-            include "plugin.yml"
-            expand "version": project.version
+    from(sourceSets.main.resources.srcDirs) {
+        include "plugin.yml"
+        expand "version": project.version
     }
 
-    from (sourceSets.main.resources.srcDirs) {
-            exclude "plugin.yml"
+    from(sourceSets.main.resources.srcDirs) {
+        exclude "plugin.yml"
     }
     println("Done!")
 }
 
 compileJava {
     dependsOn clean
-    
-    doLast {
-        print("Create POM file....")
-        pom {
-            project {
-                groupId project.group
-                artifactId project.name
-                version project.version
-            }
-        }.writeTo("./build/libs/"+project.name+"-"+project.version+".xml")
-        println("Done!")
-    }
-    
-}
-
-uploadArchives {
-    doLast {
-        print("Update repository files....")
-		def d1=project.projectDir
-		Properties archiva=new Properties()
-        
-        File data=new File("${d1}/../usr.properties")
-		if(data.exists())
-        {
-            archiva.load(data.newDataInputStream())
-            def usr=archiva.getProperty('usr')
-            def pwd=archiva.getProperty('pwd')
-
-
-            repositories.mavenDeployer {
-                    repository(url:'http://mc.hackerzlair.org:8888/repository/public/') {
-                            authentication (userName: '${usr}', password: '${pwd}')
-                    }
-
-                    pom.version=project.version
-                    pom.artifactId=project.name
-                    pom.groupId='com.gmail.berndivader'
-            }
-            println("Done!")
-        }
-        else
-        {
-            println("Archiva config file is missing. Repository not updated!")
-        }
-    }
 }

@@ -58,7 +58,7 @@ public class NMSUtils {
             s1=s1.replace("org.bukkit.craftbukkit.", "org.bukkit.craftbukkit."+vp);
             s1=s1.replace("net.minecraft.server.", "net.minecraft.server."+vp);
         }
-        return NMSUtils.class.getClassLoader().loadClass(s1);
+		return Class.forName(s1);
     }
     
     private static Object getHandle(org.bukkit.inventory.ItemStack is) {
